@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangCache Demo</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>LangCache Demo</h1>
+        </div>
+    </header>
+
+    <main>
+
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" data-tab="chat">Chat</button>
+            <button class="tab-btn" data-tab="logs">Cache Logs</button>
+        </div>
+
+        <!-- Chat Tab -->
+        <div id="chat-tab" class="tab-content active">
+            <div class="model-selection">
+                <div class="model-dropdown">
+                    <label for="embedding-model">Embedding Model:</label>
+                    <select id="embedding-model">
+                        {% for model in embedding_models %}
+                        <option value="{{ model }}">{{ model }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="model-dropdown">
+                    <label for="llm-model">LLM Model:</label>
+                    <select id="llm-model">
+                        {% for model in llm_models %}
+                        <option value="{{ model }}">{{ model }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="query-section">
+                <div class="query-input">
+                    <input type="text" id="query-input" placeholder="Enter your query here...">
+                    <button id="submit-query">Submit</button>
+                </div>
+            </div>
+
+            <div class="panels-container">
+                <div class="panel cached">
+                    <div class="panel-header">
+                        <h3>Semantic Cache Results</h3>
+                        <div class="performance-indicator">
+                            Response Time: <span id="cached-time" class="response-time">-</span>
+                        </div>
+                    </div>
+                    <div id="cached-chat" class="chat-container">
+                        <div class="welcome-message">
+                            <p>Enter a query above to start the conversation.</p>
+                            <p>The system will search for semantically similar queries in the cache.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div id="logs-tab" class="tab-content">
+            <div class="logs-container">
+                <div class="logs-header">
+                    <h3>Cache Operations Log</h3>
+                    <div class="cache-info">
+                        <span class="cache-id-display">Cache ID: <span id="cache-id-value">Loading...</span></span>
+                    </div>
+                    <div class="logs-stats">
+                        <span class="stat">Total: <span id="total-ops">0</span></span>
+                        <span class="stat cache-hits">Cache Hits: <span id="cache-hits">0</span></span>
+                        <span class="stat cache-misses">Cache Misses: <span id="cache-misses">0</span></span>
+                        <button id="refresh-logs" class="refresh-btn">Refresh</button>
+                    </div>
+                </div>
+                <div class="logs-table-container">
+                    <table id="logs-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Query</th>
+                                <th>Source</th>
+                                <th>Matched Query</th>
+                                <th>Similarity</th>
+                                <th>Response Time</th>
+                                <th>Model</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-tbody">
+                            <tr>
+                                <td colspan="7" class="no-logs">No operations logged yet. Start chatting to see logs!</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2025 LangCache Demo - <a href="https://github.com/redis/redis-semantic-cache" target="_blank">Learn more</a></p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
