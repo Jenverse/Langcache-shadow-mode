@@ -204,8 +204,11 @@
                     caching would perform in the background.
                 </div>
                 <div style="margin-top: 15px;">
-                    <a href="/data-analysis" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">
+                    <a href="/data-analysis" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-right: 10px;">
                         📊 LangCache-Shadow-Mode-Data
+                    </a>
+                    <a href="/config" style="display: inline-block; padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px;">
+                        🔧 Configuration
                     </a>
                 </div>
             </div>
@@ -374,14 +377,24 @@
                     // Update shadow status after each message
                     setTimeout(checkShadowStatus, 500);
                 } else if (data.error) {
-                    addMessage('Error: ' + data.error, 'ai');
+                    addErrorMessage(data.error, data.action);
                 } else {
-                    addMessage('Error: Invalid response from server', 'ai');
+                    addErrorMessage('Invalid response from server. Please check your configuration.', 'Visit the Configuration page to verify your settings.');
                 }
             })
             .catch(error => {
                 console.error('Fetch error:', error);
-                addMessage('Error: Failed to send message - ' + error.message, 'ai');
+                if (error.message.includes('500')) {
+                    addErrorMessage(
+                        '⚙️ Configuration needed: Please set up your API keys to use the chatbot.',
+                        'Go to Configuration page to enter your OpenAI API key and other credentials.'
+                    );
+                } else {
+                    addErrorMessage(
+                        '🌐 Connection failed: Unable to reach the server.',
+                        'Please check your internet connection and try again.'
+                    );
+                }
             })
             .finally(() => {
                 // Re-enable send button
@@ -395,6 +408,27 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}-message`;
             messageDiv.innerHTML = `<strong>${sender === 'user' ? 'You' : 'AI'}:</strong> ${text}`;
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function addErrorMessage(errorText, actionText) {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai-message';
+            messageDiv.style.background = 'linear-gradient(135deg, #f8d7da, #f5c6cb)';
+            messageDiv.style.border = '1px solid #f5c6cb';
+            messageDiv.style.color = '#721c24';
+
+            messageDiv.innerHTML = `
+                <strong>⚠️ Configuration Required:</strong><br>
+                ${errorText}<br><br>
+                <strong>💡 Next Steps:</strong> ${actionText}<br><br>
+                <a href="/config" style="display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                    🔧 Go to Configuration
+                </a>
+            `;
+
             messages.appendChild(messageDiv);
             messages.scrollTop = messages.scrollHeight;
         }

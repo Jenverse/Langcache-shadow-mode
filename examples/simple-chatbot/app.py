@@ -8,8 +8,9 @@ demonstrates shadow mode data collection.
 """
 
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 from dotenv import load_dotenv
+import secrets
 
 # Load environment variables
 load_dotenv()
@@ -19,9 +20,42 @@ import openai
 from langcache_shadow import shadow_llm_call
 
 app = Flask(__name__)
+# Generate new random secret key on each restart to invalidate old sessions
+app.secret_key = secrets.token_hex(32)
+app.permanent_session_lifetime = 0  # Sessions expire when browser closes
+print(f"🔐 New session key generated - all previous sessions invalidated")
+
+# No default configuration - users must configure their own credentials for security
+
+def get_config_value(key):
+    """Get configuration value from session only - no environment fallbacks for security"""
+    try:
+        # Only use session-configured values (user must configure their own)
+        if 'config' in session and key in session['config']:
+            return session['config'][key]
+    except RuntimeError:
+        # Outside request context, skip session check
+        pass
+    # No fallbacks - return None if not configured by user
+    return None
+
+def mask_sensitive_value(value):
+    """Mask sensitive values for display - only if there's actually a value"""
+    if not value or len(value.strip()) == 0:
+        return ''  # Return empty string, not masked placeholder
+    if len(value) <= 8:
+        return '*' * len(value)
+    return value[:4] + '*' * (len(value) - 8) + value[-4:]
 
 # Configure OpenAI
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+def get_openai_client():
+    api_key = get_config_value('openai_api_key')
+    if api_key:
+        return openai.OpenAI(api_key=api_key)
+    return None
+
+# Initialize client as None - will be set when user configures API key
+client = None
 
 def chat_with_ai(user_message):
     """
@@ -50,10 +84,10 @@ def chat_with_langcache_live(user_message):
     import requests
     import time
 
-    # LangCache API configuration (use exact same env vars as shadow mode)
-    langcache_url = os.getenv('LANGCACHE_BASE_URL')
-    langcache_api_key = os.getenv('LANGCACHE_API_KEY')
-    langcache_cache_id = os.getenv('LANGCACHE_CACHE_ID')
+    # LangCache API configuration (use app config)
+    langcache_url = get_config_value('langcache_base_url')
+    langcache_api_key = get_config_value('langcache_api_key')
+    langcache_cache_id = get_config_value('langcache_cache_id')
 
     print(f"🔧 LIVE MODE DEBUG:")
     print(f"   LangCache URL: {langcache_url}")
@@ -183,6 +217,9 @@ def chat_with_langcache_live(user_message):
 
 def get_openai_response(user_message):
     """Get response directly from OpenAI (without shadow mode)"""
+    if not client:
+        return "Please configure your OpenAI API key in the Configuration page."
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -245,9 +282,26 @@ def chat():
         })
 
     except Exception as e:
+        # Provide user-friendly error messages
+        error_message = str(e).lower()
+
+        if 'unauthorized' in error_message or '401' in error_message:
+            user_friendly_error = "🔑 Please enter your OpenAI API key in Configuration. Your API key may be missing or invalid."
+        elif 'not found' in error_message or '404' in error_message:
+            user_friendly_error = "🔍 Service not found. Please enter your LangCache Base URL in Configuration."
+        elif 'connection' in error_message or 'timeout' in error_message:
+            user_friendly_error = "🌐 Connection failed. Please check your internet connection and enter valid URLs in Configuration."
+        elif 'redis' in error_message:
+            user_friendly_error = "📊 Redis connection failed. Please enter your Redis connection URL in Configuration."
+        elif 'configure' in error_message or 'api key' in error_message:
+            user_friendly_error = "⚙️ Please enter your API keys and configuration settings to get started."
+        else:
+            user_friendly_error = "⚙️ Please enter your API keys and configuration settings. Visit the Configuration page to set up your credentials."
+
         return jsonify({
-            'error': f'Error: {str(e)}',
-            'status': 'error'
+            'error': user_friendly_error,
+            'status': 'error',
+            'action': 'Please visit the Configuration page to set up your credentials.'
         }), 500
 
 @app.route('/shadow-status')
@@ -261,8 +315,13 @@ def shadow_status():
 
     try:
         import redis
-        redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
-        redis_client = redis.from_url(redis_url)
+        redis_url = get_config_value('redis_url')
+        if not redis_url:
+            # No Redis configured by user
+            shadow_count = 0
+            data_source = 'not_configured'
+        else:
+            redis_client = redis.from_url(redis_url)
 
         # Count shadow keys in Redis
         shadow_keys = redis_client.keys("shadow:*")
@@ -290,6 +349,129 @@ def data_analysis():
     """Data analysis page"""
     return render_template('data_analysis.html')
 
+@app.route('/config')
+def config_page():
+    """Configuration page"""
+    return render_template('config.html')
+
+@app.route('/api/config', methods=['GET', 'POST'])
+def handle_config():
+    """Handle configuration API"""
+    if request.method == 'GET':
+        # Get session config (user-configured values only)
+        session_config = session.get('config', {})
+
+        # Return configuration - only mask values that user has actually configured in session
+        # For new users, show empty fields with placeholders instead of env defaults
+        return jsonify({
+            'status': 'success',
+            'config': {
+                'langcache_base_url': session_config.get('langcache_base_url', ''),
+                'langcache_api_key_masked': mask_sensitive_value(session_config.get('langcache_api_key', '')),
+                'langcache_cache_id_masked': mask_sensitive_value(session_config.get('langcache_cache_id', '')),
+                'openai_api_key_masked': mask_sensitive_value(session_config.get('openai_api_key', '')),
+                'redis_url_masked': mask_sensitive_value(session_config.get('redis_url', ''))
+            }
+        })
+
+    elif request.method == 'POST':
+        # Update configuration in session (user-specific)
+        try:
+            config_data = request.json
+
+            # Initialize session config if not exists
+            if 'config' not in session:
+                session['config'] = {}
+
+            # Update session config with new values (only if provided and not masked)
+            key_mapping = {
+                'langcacheBaseUrl': 'langcache_base_url',
+                'langcacheApiKey': 'langcache_api_key',
+                'langcacheCacheId': 'langcache_cache_id',
+                'openaiApiKey': 'openai_api_key',
+                'redisUrl': 'redis_url'
+            }
+
+            for key, value in config_data.items():
+                if value and not value.startswith('*') and len(value.strip()) > 0:  # Don't update masked or empty values
+                    if key in key_mapping:
+                        session['config'][key_mapping[key]] = value.strip()
+
+            # Mark session as modified
+            session.modified = True
+
+            # Reinitialize OpenAI client with new API key
+            global client
+            client = get_openai_client()
+
+            return jsonify({
+                'status': 'success',
+                'message': 'Configuration updated successfully! (Session-specific)'
+            })
+
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'Error updating configuration: {str(e)}'
+            }), 500
+
+@app.route('/api/test-connections', methods=['POST'])
+def test_connections():
+    """Test all configured connections"""
+    results = {
+        'langcache': False,
+        'openai': False,
+        'redis': False,
+        'all_connected': False
+    }
+
+    # Test LangCache connection
+    try:
+        import requests
+        langcache_url = get_config_value('langcache_base_url')
+        langcache_api_key = get_config_value('langcache_api_key')
+        langcache_cache_id = get_config_value('langcache_cache_id')
+
+        if langcache_url and langcache_api_key and langcache_cache_id:
+            test_url = f"{langcache_url}/v1/caches/{langcache_cache_id}/search"
+            response = requests.post(
+                test_url,
+                headers={'Authorization': f'Bearer {langcache_api_key}'},
+                json={'prompt': 'test'},
+                timeout=5
+            )
+            results['langcache'] = response.status_code in [200, 404]  # 404 is OK (no results)
+    except Exception:
+        pass
+
+    # Test OpenAI connection
+    try:
+        test_client = get_openai_client()
+        if test_client:
+            response = test_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": "test"}],
+                max_tokens=1
+            )
+            results['openai'] = True
+    except Exception:
+        pass
+
+    # Test Redis connection
+    try:
+        import redis
+        redis_url = get_config_value('redis_url')
+        if redis_url:
+            redis_client = redis.from_url(redis_url)
+            redis_client.ping()
+            results['redis'] = True
+    except Exception:
+        pass
+
+    results['all_connected'] = all(results[key] for key in ['langcache', 'openai', 'redis'])
+
+    return jsonify(results)
+
 @app.route('/api/shadow-data')
 def get_shadow_data():
     """Get shadow mode data for analysis"""
@@ -314,7 +496,14 @@ def get_shadow_data():
     # Try to get data from Redis first, then fallback to file
     redis_client = None
     try:
-        redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
+        redis_url = get_config_value('redis_url')
+        if not redis_url:
+            # No Redis configured - return empty data
+            return jsonify({
+                'data': [],
+                'metrics': metrics
+            })
+
         redis_client = redis.from_url(redis_url)
 
         # Get all shadow keys from Redis
