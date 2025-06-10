@@ -28,10 +28,13 @@ Your Application
 ## 🚀 Quick Start (5 Minutes)
 
 ### 1. **Get Your Credentials**
-Contact your LangCache representative for:
+We are using LangCache cloud for this shadow mode. 
+Once you have create LangCache service from your Redis Clous you will get: 
 - API Key
 - Cache ID  
-- Setup support
+- LangCache Base Url
+
+You will need these credentials to access your LangCache service
 
 ### 2. **Install Shadow Mode**
 ```bash
@@ -114,12 +117,6 @@ After your 2-week pilot, you'll get a detailed report showing:
 
 ## 🎯 Why Choose Shadow Mode?
 
-### Traditional Approach ❌
-- "Trust us, caching will work for you"
-- Theoretical performance improvements
-- Risk of production issues
-- Unclear ROI and business case
-
 ### Shadow Mode Approach ✅  
 - "Let's prove it with your own data"
 - Concrete metrics from your actual queries
@@ -128,32 +125,15 @@ After your 2-week pilot, you'll get a detailed report showing:
 
 ---
 
-## 📞 Get Started Today
-
-### Ready for Your Risk-Free Pilot?
-
-**Contact your LangCache representative:**
-- 📧 **Email**: pilots@langcache.com
-- 📱 **Phone**: [Your phone number]
-- 🗓️ **Schedule a call**: [Calendar link]
 
 ### Questions?
 
 **Common Questions:**
 - *"Will this slow down my application?"* → No, shadow mode runs asynchronously
 - *"What if I want to stop early?"* → Just set `LANGCACHE_SHADOW_MODE=false`
-- *"Do you see my user data?"* → No, all data stays in your environment
+- *"Do you see my user data?"* → No, all data stays in your Redis DB or your own logs if you are dumping in your env
 - *"How much work is integration?"* → Usually under 10 lines of code changes
 
----
-
-## 🏆 Success Stories
-
-> *"Shadow mode showed us 67% hit rate and $4,200/month savings. We went live immediately after the pilot."*  
-> — Engineering Manager, TechCorp
-
-> *"Integration took 5 minutes. The data convinced our CFO to approve LangCache in the next budget cycle."*  
-> — CTO, StartupXYZ
 
 ---
 
