@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chatbot - LangCache Shadow Mode Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 15px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .top-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .header-content {
+            display: flex;
+            flex-direction: column;
+        }
+        .header h1 {
+            margin: 0 0 15px 0;
+            font-size: 1.8em;
+        }
+        .chat-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .messages {
+            height: 350px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            margin-left: 20%;
+            text-align: right;
+        }
+        .ai-message {
+            background-color: #e9ecef;
+            color: #333;
+            margin-right: 20%;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        #messageInput {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        #sendButton {
+            padding: 12px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #sendButton:hover {
+            background-color: #0056b3;
+        }
+        #sendButton:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+        .status h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        .status-enabled {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-disabled {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .cache-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .cache-hit {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            box-shadow: 0 2px 6px rgba(40, 167, 69, 0.4);
+            animation: pulse-green 2s ease-in-out;
+        }
+        .cache-miss {
+            background: linear-gradient(135deg, #007bff, #6610f2);
+            color: white;
+            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.4);
+        }
+        .llm-response {
+            background: linear-gradient(135deg, #6f42c1, #e83e8c);
+            color: white;
+            box-shadow: 0 2px 6px rgba(111, 66, 193, 0.4);
+        }
+        .cache-error {
+            background: linear-gradient(135deg, #dc3545, #fd7e14);
+            color: white;
+            box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);
+        }
+        .latency-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: bold;
+            margin-left: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .latency-fast {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+        .latency-medium {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: white;
+        }
+        .latency-slow {
+            background: linear-gradient(135deg, #dc3545, #fd7e14);
+            color: white;
+        }
+        .cache-info {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            border-radius: 0 6px 6px 0;
+            font-style: italic;
+        }
+        @keyframes pulse-green {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-section">
+        <div class="header">
+            <div class="header-content">
+                <h1>LangCache Shadow Mode Demo</h1>
+                <div class="info-box">
+                    <strong>🔍 Shadow Mode:</strong> This chatbot uses shadow mode to collect performance data
+                    while you chat. Users always get LLM responses, but shadow mode tests how semantic
+                    caching would perform in the background.
+                </div>
+                <div style="margin-top: 15px;">
+                    <a href="/data-analysis" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">
+                        📊 LangCache-Shadow-Mode-Data
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="status" id="shadowStatus">
+            <h3>📊 LangCache Mode</h3>
+
+            <!-- Mode Selection Radio Buttons -->
+            <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                <div style="margin-bottom: 8px;">
+                    <label style="display: flex; align-items: center; cursor: pointer; font-weight: normal;">
+                        <input type="radio" name="mode" value="shadow" checked onchange="changeMode()" style="margin-right: 8px;">
+                        <span>🔍 Shadow Mode</span>
+                    </label>
+                    <small style="color: #666; margin-left: 20px;">Always use LLM while testing LangCache performance in background</small>
+                </div>
+                <div>
+                    <label style="display: flex; align-items: center; cursor: pointer; font-weight: normal;">
+                        <input type="radio" name="mode" value="live" onchange="changeMode()" style="margin-right: 8px;">
+                        <span>⚡ Live Mode</span>
+                    </label>
+                    <small style="color: #666; margin-left: 20px;">Use LangCache response when there is a Hit, otherwise call LLM</small>
+                </div>
+            </div>
+
+            <div class="status-item">
+                <span>Data Collected:</span>
+                <span id="dataCount">Checking...</span>
+            </div>
+            <div class="status-item">
+                <span>Data Source:</span>
+                <span id="dataSource">Redis</span>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div class="chat-container">
+        <div class="messages" id="messages">
+            <div class="ai-message">
+                <strong>AI:</strong> Hello! I'm a simple chatbot with LangCache shadow mode enabled. 
+                Ask me anything and I'll respond while collecting performance data in the background.
+                <br><br>
+                <strong>Try asking:</strong>
+                <ul>
+                    <li>"What is machine learning?"</li>
+                    <li>"How does AI work?"</li>
+                    <li>"Explain neural networks"</li>
+                    <li>"What is deep learning?" (similar to first question)</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Type your message here..." 
+                   onkeypress="if(event.key==='Enter') sendMessage()">
+            <button id="sendButton" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Track current mode (default: shadow mode)
+        let currentMode = 'shadow';
+
+        // Check shadow mode status on page load
+        checkShadowStatus();
+
+        function checkShadowStatus() {
+            fetch('/shadow-status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('dataCount').textContent =
+                        data.shadow_data_collected + ' entries';
+                    document.getElementById('dataSource').textContent =
+                        data.data_source || 'Unknown';
+                    updateModeDisplay();
+                })
+                .catch(error => {
+                    console.error('Error checking shadow status:', error);
+                    document.getElementById('dataCount').textContent = 'Error';
+                    document.getElementById('dataSource').textContent = 'Error';
+                });
+        }
+
+        function updateModeDisplay() {
+            // Update radio button selection
+            const shadowRadio = document.querySelector('input[name="mode"][value="shadow"]');
+            const liveRadio = document.querySelector('input[name="mode"][value="live"]');
+
+            if (currentMode === 'shadow') {
+                shadowRadio.checked = true;
+                liveRadio.checked = false;
+            } else {
+                shadowRadio.checked = false;
+                liveRadio.checked = true;
+            }
+        }
+
+        function changeMode() {
+            const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+
+            if (selectedMode !== currentMode) {
+                currentMode = selectedMode;
+
+                // Show mode change message
+                const messages = document.getElementById('messages');
+                const modeMsg = document.createElement('div');
+                modeMsg.className = 'message ai-message';
+                modeMsg.style.background = '#e7f3ff';
+                modeMsg.style.border = '1px solid #007bff';
+
+                if (currentMode === 'shadow') {
+                    modeMsg.innerHTML = '<strong>🔍 Shadow Mode Enabled:</strong> Collecting performance data while you chat. Users get LLM responses, shadow mode tests caching in background.';
+                } else {
+                    modeMsg.innerHTML = '<strong>⚡ Live Mode Enabled:</strong> Using LangCache for real responses. Cache hits will return cached responses instead of calling the LLM.';
+                }
+
+                messages.appendChild(modeMsg);
+                messages.scrollTop = messages.scrollHeight;
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Disable send button
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
+            
+            // Send to backend with current mode
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    mode: currentMode
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data); // Debug log
+                if (data.status === 'success' && data.response) {
+                    // Clean response text (remove any existing cache prefixes)
+                    let responseText = data.response.replace(/^\[CACHED.*?\]\s*/, '').replace(/^🎯\s*\[CACHED.*?\]\s*/, '');
+
+                    // Add message with cache info
+                    addMessageWithCache(responseText, 'ai', data.cache_info);
+
+                    // Update shadow status after each message
+                    setTimeout(checkShadowStatus, 500);
+                } else if (data.error) {
+                    addMessage('Error: ' + data.error, 'ai');
+                } else {
+                    addMessage('Error: Invalid response from server', 'ai');
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                addMessage('Error: Failed to send message - ' + error.message, 'ai');
+            })
+            .finally(() => {
+                // Re-enable send button
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send';
+            });
+        }
+        
+        function addMessage(text, sender) {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.innerHTML = `<strong>${sender === 'user' ? 'You' : 'AI'}:</strong> ${text}`;
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function getLatencyBadge(latency, type) {
+            if (!latency) return '';
+
+            let latencyClass = 'latency-fast';
+            if (latency > 2000) latencyClass = 'latency-slow';
+            else if (latency > 500) latencyClass = 'latency-medium';
+
+            const icon = type === 'cache' ? '⚡' : '🧠';
+            return `<span class="latency-badge ${latencyClass}">${icon} ${latency}ms</span>`;
+        }
+
+        function addMessageWithCache(text, sender, cacheInfo) {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+
+            let badgeHtml = '';
+            let cacheInfoHtml = '';
+
+            if (cacheInfo) {
+                if (cacheInfo.cached) {
+                    // Cache HIT - prominent green badge with latency
+                    const latencyBadge = getLatencyBadge(cacheInfo.cache_latency, 'cache');
+                    badgeHtml = `<div class="cache-badge cache-hit">🎯 LangCache${latencyBadge}</div>`;
+                    cacheInfoHtml = `<div class="cache-info">
+                        <strong>Source:</strong> LangCache |
+                        <strong>Similarity:</strong> ${(cacheInfo.similarity * 100).toFixed(1)}% |
+                        <strong>Matched:</strong> "${cacheInfo.matched_query || 'N/A'}"
+                    </div>`;
+                } else if (currentMode === 'live') {
+                    // Cache MISS in live mode - LLM badge with latency
+                    const latencyBadge = getLatencyBadge(cacheInfo.llm_latency, 'llm');
+                    badgeHtml = `<div class="cache-badge llm-response">🧠 LLM${latencyBadge}</div>`;
+                    cacheInfoHtml = `<div class="cache-info">
+                        <strong>Source:</strong> ${cacheInfo.source} |
+                        <strong>Reason:</strong> ${cacheInfo.reason}
+                    </div>`;
+                } else {
+                    // Shadow mode - show LLM badge with latency
+                    const latencyBadge = getLatencyBadge(cacheInfo.llm_latency, 'llm');
+                    badgeHtml = `<div class="cache-badge llm-response">🧠 LLM${latencyBadge}</div>`;
+                }
+            }
+
+            messageDiv.innerHTML = `
+                ${badgeHtml}
+                <strong>${sender === 'user' ? 'You' : 'AI'}:</strong> ${text}
+                ${cacheInfoHtml}
+            `;
+
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+    </script>
+</body>
+</html>
