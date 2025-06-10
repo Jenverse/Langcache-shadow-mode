@@ -4,6 +4,7 @@
 
 Shadow Mode lets you validate LangCache's performance alongside your existing LLM applications without affecting your users. See exactly how much you'll save in costs and latency before committing to semantic caching.
 
+https://drive.google.com/file/d/1GFIgK_lHlE3i5srhDxptciQpPLGQbLbL/view?usp=sharing
 ---
 
 ## 🎯 What is Shadow Mode?
