@@ -237,6 +237,15 @@ def home():
     """Main chat page"""
     return render_template('index.html')
 
+@app.route('/api/health')
+def health_check():
+    """Health check endpoint for deployment verification"""
+    return jsonify({
+        'status': 'healthy',
+        'message': 'LangCache Shadow Mode Demo is running!',
+        'version': '2.0'
+    })
+
 @app.route('/chat', methods=['POST'])
 def chat():
     """Handle chat messages"""
@@ -627,7 +636,13 @@ if __name__ == '__main__':
         print(f"⚠️  Redis connection failed: {e}")
         print("📊 Shadow data will be saved to: shadow_mode.log (file fallback)")
 
-    print("🌐 Open: http://localhost:5001")
-    print("📊 View data analysis at: http://localhost:5001/data-analysis")
-    
+    print("🌐 Open: http://localhost:5002")
+    print("📊 View data analysis at: http://localhost:5002/data-analysis")
+
     app.run(debug=True, host='0.0.0.0', port=5002)
+
+# For Vercel deployment - expose the app object
+# Vercel will automatically detect this as the WSGI application
+if __name__ != '__main__':
+    # This runs when imported by Vercel
+    pass
