@@ -130,14 +130,6 @@ After your 2-week pilot, you'll get a detailed report showing:
 
 ---
 
-## 📞 Get Started Today
-
-### Ready for Your Risk-Free Pilot?
-
-**Contact your LangCache representative:**
-- 📧 **Email**: pilots@langcache.com
-- 📱 **Phone**: [Your phone number]
-- 🗓️ **Schedule a call**: [Calendar link]
 
 ### Questions?
 
@@ -149,19 +141,6 @@ After your 2-week pilot, you'll get a detailed report showing:
 
 ---
 
-## 🏆 Success Stories
-
-> *"Shadow mode showed us 67% hit rate and $4,200/month savings. We went live immediately after the pilot."*  
-> — Engineering Manager, TechCorp
-
-> *"Integration took 5 minutes. The data convinced our CFO to approve LangCache in the next budget cycle."*  
-> — CTO, StartupXYZ
-
----
-
-**Ready to see how much LangCache can save you? Let's start your risk-free pilot today!** 🚀
-
----
 
 ## 📄 License
 
