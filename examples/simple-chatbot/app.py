@@ -20,8 +20,54 @@ from langcache_shadow import shadow_llm_call
 
 app = Flask(__name__)
 
-# Configure OpenAI
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Configure OpenAI with enhanced proxy fix
+def create_openai_client():
+    """Create OpenAI client with comprehensive error handling"""
+    import os
+
+    print(f"🔧 Creating OpenAI client...")
+    print(f"🔧 OpenAI version: {getattr(openai, '__version__', 'unknown')}")
+
+    # Clear any proxy environment variables that might interfere
+    proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'OPENAI_PROXY', 'ALL_PROXY', 'all_proxy']
+    cleared_vars = []
+    for var in proxy_vars:
+        if var in os.environ:
+            cleared_vars.append(var)
+            del os.environ[var]
+
+    if cleared_vars:
+        print(f"🔧 Cleared proxy env vars: {cleared_vars}")
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print("❌ Error: OPENAI_API_KEY not set")
+        return None
+
+    print(f"🔧 API key length: {len(api_key)}")
+    print(f"🔧 API key starts with: {api_key[:10]}...")
+
+    # Try multiple methods to create the client
+    methods = [
+        ("Basic creation", lambda: openai.OpenAI(api_key=api_key)),
+        ("With timeout", lambda: openai.OpenAI(api_key=api_key, timeout=30.0)),
+        ("With explicit params", lambda: openai.OpenAI(api_key=api_key, timeout=30.0, max_retries=2))
+    ]
+
+    for method_name, method_func in methods:
+        try:
+            print(f"🔧 Trying {method_name}...")
+            client = method_func()
+            print(f"✅ OpenAI client created successfully using {method_name}")
+            return client
+        except Exception as e:
+            print(f"❌ {method_name} failed: {e}")
+            continue
+
+    print("❌ All OpenAI client creation methods failed")
+    return None
+
+client = create_openai_client()
 
 def chat_with_ai(user_message):
     """
@@ -183,6 +229,9 @@ def chat_with_langcache_live(user_message):
 
 def get_openai_response(user_message):
     """Get response directly from OpenAI (without shadow mode)"""
+    if not client:
+        return "OpenAI client not available. Please check your API key configuration."
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
